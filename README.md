@@ -74,7 +74,7 @@ panel sits beside it or beneath it — it works in portrait and landscape.
 ## Build
 
 ```sh
-./gradlew :app:testDebugUnitTest     # 55 tests
+./gradlew :app:testDebugUnitTest     # 69 tests
 ./gradlew :app:assembleDebug
 ```
 

@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mj.wordshake.game.Board
+import com.mj.wordshake.game.Grid
 
 /**
  * The tray of dice and the trace laid over it.
@@ -60,8 +61,8 @@ fun BoardView(
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val side = minOf(maxWidth, maxHeight)
         val trayPad = side * 0.035f
-        val grid = side - trayPad * 2
-        val cell = grid / dim
+        val gridSide = side - trayPad * 2
+        val cell = gridSide / dim
 
         Box(
             Modifier
@@ -73,24 +74,18 @@ fun BoardView(
         ) {
             Box(
                 Modifier
-                    .size(grid)
+                    .size(gridSide)
                     .pointerInput(board, enabled) {
                         if (!enabled) return@pointerInput
-
-                        fun cellAt(o: Offset): Int? {
-                            if (o.x < 0f || o.y < 0f) return null
-                            if (o.x >= size.width || o.y >= size.height) return null
-                            val w = size.width.toFloat() / dim
-                            val h = size.height.toFloat() / dim
-                            val c = (o.x / w).toInt().coerceIn(0, dim - 1)
-                            val r = (o.y / h).toInt().coerceIn(0, dim - 1)
-                            return r * dim + c
-                        }
+                        val grid = Grid(dim, size.width.toFloat(), size.height.toFloat())
 
                         awaitEachGesture {
                             val down = awaitFirstDown()
-                            val start = cellAt(down.position)
+                            // A press anywhere on a die opens the word, but
+                            // once travelling the stricter centre test applies.
+                            val start = grid.cellAt(down.position.x, down.position.y)
                             var dragging = false
+                            var last = down.position
 
                             while (true) {
                                 val event = awaitPointerEvent()
@@ -106,7 +101,12 @@ fun BoardView(
                                     start?.let(onTraceStart)
                                 }
                                 if (dragging) {
-                                    cellAt(change.position)?.let(onTraceMove)
+                                    grid.walk(
+                                        last.x, last.y,
+                                        change.position.x, change.position.y,
+                                        onTraceMove,
+                                    )
+                                    last = change.position
                                     change.consume()
                                 }
                             }
