@@ -282,9 +282,9 @@ private fun SwipeSlider(value: Float, onChange: (Float) -> Unit) {
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            "How near the middle of a die your finger has to pass for it to " +
-                "join the word. Bigger is easier to hit, but a diagonal swipe " +
-                "gets likelier to catch the die it slides past.",
+            "How much of a die counts as touching it. Reach further and letters " +
+                "pick up sooner, especially on diagonals; pull back and a wobbly " +
+                "swipe is less likely to catch the die it passes.",
             color = Palette.TextMuted,
             fontSize = 12.sp,
         )

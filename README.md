@@ -52,7 +52,6 @@ silently and at random rather than loudly.
 If you regenerate the file, sort it with `LC_ALL=C sort -u` — a locale-aware
 sort will not necessarily match.
 
-
 ## Settings
 
 Reachable from the start screen; changes apply immediately and persist.
@@ -62,16 +61,38 @@ Reachable from the start screen; changes apply immediately and persist.
 - **Shortest word** — Auto (3 on 4x4, 4 on 5x5) or a fixed 3, 4 or 5. This
   re-grades the board, since it changes which words were ever there.
 - **Show words remaining** — the score bar counts against the board total.
-- **Die reach** — how near the centre of a die a drag must pass to claim it,
-  from 0.28 to 0.50 of a cell. The ceiling is deliberate: a diagonal drag
-  passes 0.707 of a cell from the centre it slides by, so a larger radius would
-  reintroduce the bug where diagonals splice in a stray letter.
+- **Die reach** — how much of a die counts as touching it, from 0.28 to 0.46 of
+  a cell. See below; this is the dial for how diagonals feel.
 - **Vibrate / Sound** — feedback on accepted and rejected words. Tones are
   generated rather than shipped, so no audio ships in the APK.
 - **Theme** — system, light or dark.
 
 Best scores are kept separately per board size, round length and minimum word
 length, since all three change how many points are on the table.
+
+## Why the hit region is a square
+
+A drag claims a die once it reaches within *reach* of that die's centre, and
+that region is a centred square rather than a circle. The shape matters more
+than it sounds.
+
+Diagonal neighbours sit 1.41 cells apart while orthogonal ones sit 1.0, but a
+circle reaches the same distance whichever way you go. At the default reach a
+circle therefore leaves a dead stretch across about 40% of a diagonal drag
+against 16% of a straight one — so diagonals stop responding halfway across,
+and approaching a die corner-on (which is what a diagonal does) lands in the
+part of the die a circle does not cover. A square leaves the same 16% either
+way.
+
+The 0.46 ceiling is load-bearing. At 0.5 the squares of two orthogonal
+neighbours reach the line of a diagonal drag, and a stray die starts being
+spliced into words again — the v0.2 bug. `DeadZoneTest` re-checks every reach
+the slider allows.
+
+The trade is tolerance for a wobbly finger: a drag may stray about
+`0.5 - reach` of a cell off the line before the die it passes gets claimed, so
+a lower reach is steadier and a higher one is more responsive.
+
 ## Layout
 
 ```
@@ -94,7 +115,7 @@ panel sits beside it or beneath it — it works in portrait and landscape.
 ## Build
 
 ```sh
-./gradlew :app:testDebugUnitTest     # 80 tests
+./gradlew :app:testDebugUnitTest     # 87 tests
 ./gradlew :app:assembleDebug
 ```
 

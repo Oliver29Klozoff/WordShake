@@ -1,5 +1,6 @@
 package com.mj.wordshake.game
 
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
@@ -37,12 +38,25 @@ class Grid(
         return row * dim + col
     }
 
-    /** The cell whose centre [x], [y] is close to, or null in the gaps. */
+    /**
+     * The cell whose middle [x], [y] falls in, or null in the gaps between.
+     *
+     * The region is a centred square rather than a circle, which matters more
+     * than it sounds. A circle of this radius covers 0.42 of a cell in every
+     * direction, but diagonal neighbours are 1.41 cells apart while orthogonal
+     * ones are 1.0 — so a circle leaves a dead stretch across 40% of a diagonal
+     * drag against 16% of a straight one, and diagonals feel unresponsive in
+     * the middle. A square leaves the same 16% either way.
+     *
+     * The anti-splicing property survives: a straight diagonal only clips the
+     * square of the die it passes once the inset reaches half a cell, which is
+     * why the slider stops short of that.
+     */
     fun cellNear(x: Float, y: Float): Int? {
         val cell = cellAt(x, y) ?: return null
-        val dx = x - (cell % dim + 0.5f) * cellWidth
-        val dy = y - (cell / dim + 0.5f) * cellHeight
-        return if (dx * dx + dy * dy <= radius * radius) cell else null
+        val dx = abs(x - (cell % dim + 0.5f) * cellWidth)
+        val dy = abs(y - (cell / dim + 0.5f) * cellHeight)
+        return if (max(dx, dy) <= radius) cell else null
     }
 
     /**

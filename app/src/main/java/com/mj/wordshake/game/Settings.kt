@@ -26,12 +26,13 @@ data class Settings(
         val LENGTH_CHOICES = listOf(null, 3, 4, 5)
 
         /**
-         * Bounds for the swipe radius, as a fraction of a cell. The ceiling
-         * matters: a diagonal drag passes 0.707 of a cell from the centre of
-         * the die it goes by, so a radius approaching that would start
-         * grabbing neighbours again — the bug this slider is tuning around.
+         * Bounds for the swipe reach, as a fraction of a cell. The ceiling is
+         * load-bearing: the square regions of two orthogonal neighbours meet
+         * the line of a diagonal drag once the inset reaches half a cell, so a
+         * reach at or past 0.5 would start splicing a stray die into diagonal
+         * words again — the bug this slider exists to tune around, not undo.
          */
         const val MIN_SWIPE_RADIUS = 0.28f
-        const val MAX_SWIPE_RADIUS = 0.50f
+        const val MAX_SWIPE_RADIUS = 0.46f
     }
 }

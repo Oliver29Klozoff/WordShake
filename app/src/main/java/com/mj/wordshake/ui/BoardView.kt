@@ -78,10 +78,18 @@ fun BoardView(
                     .size(gridSide)
                     .pointerInput(board, enabled, swipeRadius) {
                         if (!enabled) return@pointerInput
-                        val grid = Grid(dim, size.width.toFloat(), size.height.toFloat(), swipeRadius)
-
                         awaitEachGesture {
                             val down = awaitFirstDown()
+                            // Measured per gesture, not once when this handler
+                            // starts: none of its keys change on a rotation, so
+                            // a grid built up front would go on mapping touches
+                            // against the previous orientation's board.
+                            val grid = Grid(
+                                dim,
+                                size.width.toFloat(),
+                                size.height.toFloat(),
+                                swipeRadius,
+                            )
                             // A press anywhere on a die opens the word, but
                             // once travelling the stricter centre test applies.
                             val start = grid.cellAt(down.position.x, down.position.y)
