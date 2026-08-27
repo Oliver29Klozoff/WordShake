@@ -1,15 +1,14 @@
 package com.mj.wordshake.ui
 
 import android.app.Application
-import android.content.Context
 import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mj.wordshake.game.Board
-import com.mj.wordshake.game.BoardSize
 import com.mj.wordshake.game.Dice
 import com.mj.wordshake.game.FoundWord
 import com.mj.wordshake.game.Scoring
+import com.mj.wordshake.game.Settings
 import com.mj.wordshake.game.Solver
 import com.mj.wordshake.game.TapOutcome
 import com.mj.wordshake.game.Tracing
@@ -35,10 +34,10 @@ data class Flash(val id: Long, val word: String, val verdict: Verdict, val point
 
 data class UiState(
     val phase: Phase = Phase.LOADING,
-    val boardSize: BoardSize = BoardSize.CLASSIC,
-    val roundSeconds: Int = DEFAULT_ROUND,
+    val settings: Settings = Settings(),
+    val settingsOpen: Boolean = false,
     val board: Board? = null,
-    val secondsLeft: Int = DEFAULT_ROUND,
+    val secondsLeft: Int = Settings().roundSeconds,
     val path: List<Int> = emptyList(),
     val found: List<FoundWord> = emptyList(),
     val score: Int = 0,
@@ -48,7 +47,7 @@ data class UiState(
     val solving: Boolean = true,
 ) {
     val currentWord: String get() = board?.wordFor(path).orEmpty()
-    val minWordLength: Int get() = boardSize.minWordLength
+    val minWordLength: Int get() = settings.effectiveMinLength
     val canSubmit: Boolean get() = currentWord.length >= minWordLength
 
     /** Words that were on the board but never found. */
@@ -57,10 +56,6 @@ data class UiState(
             val got = found.mapTo(HashSet()) { it.word }
             return solution.keys.filterNot { it in got }
         }
-
-    companion object {
-        const val DEFAULT_ROUND = 180
-    }
 }
 
 class GameViewModel(app: Application) : AndroidViewModel(app) {
@@ -68,7 +63,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
 
-    private val prefs = app.getSharedPreferences("wordshake", Context.MODE_PRIVATE)
+    private val store = SettingsStore(app)
+    private val feedback = Feedback(app)
 
     private var dictionary: WordDictionary? = null
     private var timerJob: Job? = null
@@ -78,6 +74,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private var flashSeq = 0L
 
     init {
+        val settings = store.load()
+        _state.update { it.copy(settings = settings, secondsLeft = settings.roundSeconds) }
         viewModelScope.launch {
             val loaded = withContext(Dispatchers.IO) {
                 WordDictionary.load(getApplication<Application>().assets.open(WORD_ASSET))
@@ -87,46 +85,67 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    override fun onCleared() {
+        feedback.release()
+        super.onCleared()
+    }
+
+    // --- settings ---------------------------------------------------------
+
+    fun openSettings() = _state.update { it.copy(settingsOpen = true) }
+
+    fun closeSettings() = _state.update { it.copy(settingsOpen = false) }
+
+    /**
+     * Applies a settings change and repairs whatever it invalidated: a new
+     * board size needs a new shake, and a new minimum length changes which
+     * words the board was worth, so the grading has to be redone.
+     */
+    fun updateSettings(next: Settings) {
+        val previous = _state.value.settings
+        if (next == previous) return
+        store.save(next)
+        _state.update {
+            it.copy(
+                settings = next,
+                best = store.bestScore(next),
+                secondsLeft = if (it.phase == Phase.PLAYING || it.phase == Phase.PAUSED) {
+                    it.secondsLeft
+                } else {
+                    next.roundSeconds
+                },
+            )
+        }
+        when {
+            next.boardSize != previous.boardSize -> shake()
+            next.effectiveMinLength != previous.effectiveMinLength ->
+                _state.value.board?.let { solve(it) }
+        }
+    }
+
     // --- round setup ------------------------------------------------------
 
     /** Tumble a fresh board and return to the pre-round screen. */
     fun shake() {
         timerJob?.cancel()
         flashJob?.cancel()
-        val size = _state.value.boardSize
-        val board = Dice.shake(size)
+        val settings = _state.value.settings
+        val board = Dice.shake(settings.boardSize)
         _state.update {
             it.copy(
                 phase = Phase.READY,
                 board = board,
-                secondsLeft = it.roundSeconds,
+                secondsLeft = settings.roundSeconds,
                 path = emptyList(),
                 found = emptyList(),
                 score = 0,
                 flash = null,
                 solution = emptyMap(),
                 solving = true,
-                best = prefs.getInt(bestKey(size, it.roundSeconds), 0),
+                best = store.bestScore(settings),
             )
         }
         solve(board)
-    }
-
-    fun setBoardSize(size: BoardSize) {
-        if (size == _state.value.boardSize) return
-        _state.update { it.copy(boardSize = size) }
-        shake()
-    }
-
-    fun setRoundSeconds(seconds: Int) {
-        if (seconds == _state.value.roundSeconds) return
-        _state.update {
-            it.copy(
-                roundSeconds = seconds,
-                secondsLeft = seconds,
-                best = prefs.getInt(bestKey(it.boardSize, seconds), 0),
-            )
-        }
     }
 
     /**
@@ -135,11 +154,16 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun solve(board: Board) {
         val dict = dictionary ?: return
+        val minLength = _state.value.settings.effectiveMinLength
         solveJob?.cancel()
         solveJob = viewModelScope.launch {
-            val words = withContext(Dispatchers.Default) { Solver.solve(board, dict) }
+            val words = withContext(Dispatchers.Default) { Solver.solve(board, dict, minLength) }
             _state.update {
-                if (it.board === board) it.copy(solution = words, solving = false) else it
+                if (it.board === board && it.settings.effectiveMinLength == minLength) {
+                    it.copy(solution = words, solving = false)
+                } else {
+                    it
+                }
             }
         }
     }
@@ -148,8 +172,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun start() {
         if (_state.value.phase != Phase.READY) return
-        deadline = SystemClock.elapsedRealtime() + _state.value.roundSeconds * 1000L
-        _state.update { it.copy(phase = Phase.PLAYING) }
+        deadline = SystemClock.elapsedRealtime() + _state.value.settings.roundSeconds * 1000L
+        _state.update { it.copy(phase = Phase.PLAYING, settingsOpen = false) }
         tick()
     }
 
@@ -191,17 +215,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         timerJob?.cancel()
         val s = _state.value
         if (s.phase == Phase.RESULTS || s.phase == Phase.READY) return
-        val key = bestKey(s.boardSize, s.roundSeconds)
-        if (s.score > prefs.getInt(key, 0)) {
-            prefs.edit().putInt(key, s.score).apply()
-        }
+        val best = store.recordScore(s.settings, s.score)
         _state.update {
-            it.copy(
-                phase = Phase.RESULTS,
-                path = emptyList(),
-                flash = null,
-                best = prefs.getInt(key, 0),
-            )
+            it.copy(phase = Phase.RESULTS, path = emptyList(), flash = null, best = best)
         }
     }
 
@@ -248,16 +264,20 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             if (s.path.isNotEmpty()) _state.update { it.copy(path = emptyList()) }
             return
         }
+
         val word = board.wordFor(s.path)
         val verdict = judge(
             board = board,
             dictionary = dictionary,
             alreadyFound = s.found.mapTo(HashSet()) { it.word },
             path = s.path,
+            minLength = s.settings.effectiveMinLength,
         )
 
         val points = if (verdict == Verdict.ACCEPTED) Scoring.score(word) else 0
         val flash = Flash(flashSeq++, word, verdict, points)
+
+        feedback.play(verdict, s.settings.haptics, s.settings.sound)
 
         _state.update {
             it.copy(
@@ -276,8 +296,6 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             _state.update { if (it.flash?.id == flash.id) it.copy(flash = null) else it }
         }
     }
-
-    private fun bestKey(size: BoardSize, seconds: Int) = "best_${size.name}_$seconds"
 
     private companion object {
         const val WORD_ASSET = "words.txt"

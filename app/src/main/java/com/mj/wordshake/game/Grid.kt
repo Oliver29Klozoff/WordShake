@@ -23,10 +23,11 @@ class Grid(
     private val dim: Int,
     private val width: Float,
     private val height: Float,
+    hitRadius: Float = DEFAULT_HIT_RADIUS,
 ) {
     private val cellWidth = width / dim
     private val cellHeight = height / dim
-    private val radius = min(cellWidth, cellHeight) * HIT_RADIUS
+    private val radius = min(cellWidth, cellHeight) * hitRadius
 
     /** The cell containing [x], [y], however near its edge. Used for taps. */
     fun cellAt(x: Float, y: Float): Int? {
@@ -53,12 +54,16 @@ class Grid(
      * steps keeps a fast trace as reliable as a slow one.
      */
     fun walk(fromX: Float, fromY: Float, toX: Float, toY: Float, onCell: (Int) -> Unit) {
-        val step = min(cellWidth, cellHeight) / 3f
+        val step = min(cellWidth, cellHeight) / 4f
         val dx = toX - fromX
         val dy = toY - fromY
         val distance = kotlin.math.sqrt(dx * dx + dy * dy)
         val steps = max(1, ceil(distance / step).toInt())
-        for (i in 1..steps) {
+        // From zero, not one: the starting point is part of the segment, and
+        // at a tight radius the first step alone can already clear the cell the
+        // finger is standing on. Re-reporting a cell is harmless, since the
+        // trace rules ignore a move onto the die already at the end.
+        for (i in 0..steps) {
             val t = i.toFloat() / steps
             cellNear(fromX + dx * t, fromY + dy * t)?.let(onCell)
         }
@@ -69,6 +74,6 @@ class Grid(
          * Fraction of a cell, from its centre, that a drag must reach. Sits
          * just inside the drawn die, so the rule is simply "be on the die".
          */
-        const val HIT_RADIUS = 0.42f
+        const val DEFAULT_HIT_RADIUS = 0.42f
     }
 }

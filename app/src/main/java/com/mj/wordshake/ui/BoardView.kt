@@ -50,6 +50,7 @@ fun BoardView(
     board: Board,
     path: List<Int>,
     enabled: Boolean,
+    swipeRadius: Float,
     onTraceStart: (Int) -> Unit,
     onTraceMove: (Int) -> Unit,
     onTraceEnd: () -> Unit,
@@ -75,9 +76,9 @@ fun BoardView(
             Box(
                 Modifier
                     .size(gridSide)
-                    .pointerInput(board, enabled) {
+                    .pointerInput(board, enabled, swipeRadius) {
                         if (!enabled) return@pointerInput
-                        val grid = Grid(dim, size.width.toFloat(), size.height.toFloat())
+                        val grid = Grid(dim, size.width.toFloat(), size.height.toFloat(), swipeRadius)
 
                         awaitEachGesture {
                             val down = awaitFirstDown()
@@ -117,7 +118,7 @@ fun BoardView(
                         }
                     },
             ) {
-                TraceOverlay(dim, path, Modifier.matchParentSize())
+                TraceOverlay(dim, path, Palette.PickedFace, Modifier.matchParentSize())
 
                 for (index in board.faces.indices) {
                     val order = path.indexOf(index)
@@ -139,7 +140,7 @@ fun BoardView(
 
 /** The ribbon joining picked dice, drawn behind them so letters stay readable. */
 @Composable
-private fun TraceOverlay(dim: Int, path: List<Int>, modifier: Modifier) {
+private fun TraceOverlay(dim: Int, path: List<Int>, ink: Color, modifier: Modifier) {
     Canvas(modifier) {
         if (path.size < 2) return@Canvas
         val w = size.width / dim
@@ -156,7 +157,7 @@ private fun TraceOverlay(dim: Int, path: List<Int>, modifier: Modifier) {
         }
         drawPath(
             path = line,
-            color = Palette.PickedFace.copy(alpha = 0.55f),
+            color = ink.copy(alpha = 0.55f),
             style = Stroke(width = w * 0.30f, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round),
         )
     }

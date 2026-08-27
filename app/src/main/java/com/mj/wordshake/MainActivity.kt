@@ -8,7 +8,7 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
-import com.mj.wordshake.game.BoardSize
+import com.mj.wordshake.game.Settings
 import com.mj.wordshake.ui.GameActions
 import com.mj.wordshake.ui.GameScreen
 import com.mj.wordshake.ui.GameViewModel
@@ -24,9 +24,11 @@ class MainActivity : ComponentActivity() {
             val state by model.state.collectAsState()
             val actions = remember { bind(model) }
 
-            // Back during a round should stop the clock, not drop the player
-            // out of the app mid-word.
-            BackHandler(enabled = state.phase == Phase.PLAYING) { model.pause() }
+            // Back closes settings if they are open; during a round it stops
+            // the clock rather than dropping the player out mid-word.
+            BackHandler(enabled = state.settingsOpen || state.phase == Phase.PLAYING) {
+                if (state.settingsOpen) model.closeSettings() else model.pause()
+            }
 
             GameScreen(state, actions)
         }
@@ -47,8 +49,9 @@ private fun bind(model: GameViewModel) = object : GameActions {
     override fun shake() = model.shake()
     override fun submit() = model.submit()
     override fun clearPath() = model.clearPath()
-    override fun setBoardSize(size: BoardSize) = model.setBoardSize(size)
-    override fun setRoundSeconds(seconds: Int) = model.setRoundSeconds(seconds)
+    override fun openSettings() = model.openSettings()
+    override fun closeSettings() = model.closeSettings()
+    override fun updateSettings(settings: Settings) = model.updateSettings(settings)
     override fun onTraceStart(cell: Int) = model.onTraceStart(cell)
     override fun onTraceMove(cell: Int) = model.onTraceMove(cell)
     override fun onTraceEnd() = model.onTraceEnd()

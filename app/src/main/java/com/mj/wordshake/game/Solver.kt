@@ -14,9 +14,13 @@ object Solver {
      * of paths; with it the walk visits a few hundred thousand nodes and
      * finishes in well under a second.
      */
-    fun solve(board: Board, dict: WordDictionary): Map<String, List<Int>> {
+    fun solve(
+        board: Board,
+        dict: WordDictionary,
+        minLength: Int = board.size.minWordLength,
+    ): Map<String, List<Int>> {
         val cells = board.size.cellCount
-        val minLength = board.size.minWordLength
+
         val faces = Array(cells) { board.faces[it].lowercase() }
         val visited = BooleanArray(cells)
         val path = IntArray(cells)

@@ -52,6 +52,26 @@ silently and at random rather than loudly.
 If you regenerate the file, sort it with `LC_ALL=C sort -u` — a locale-aware
 sort will not necessarily match.
 
+
+## Settings
+
+Reachable from the start screen; changes apply immediately and persist.
+
+- **Board** — 4x4 or 5x5. Changing it shakes a new board.
+- **Round length** — 1, 2, 3 or 5 minutes.
+- **Shortest word** — Auto (3 on 4x4, 4 on 5x5) or a fixed 3, 4 or 5. This
+  re-grades the board, since it changes which words were ever there.
+- **Show words remaining** — the score bar counts against the board total.
+- **Die reach** — how near the centre of a die a drag must pass to claim it,
+  from 0.28 to 0.50 of a cell. The ceiling is deliberate: a diagonal drag
+  passes 0.707 of a cell from the centre it slides by, so a larger radius would
+  reintroduce the bug where diagonals splice in a stray letter.
+- **Vibrate / Sound** — feedback on accepted and rejected words. Tones are
+  generated rather than shipped, so no audio ships in the APK.
+- **Theme** — system, light or dark.
+
+Best scores are kept separately per board size, round length and minimum word
+length, since all three change how many points are on the table.
 ## Layout
 
 ```
@@ -74,7 +94,7 @@ panel sits beside it or beneath it — it works in portrait and landscape.
 ## Build
 
 ```sh
-./gradlew :app:testDebugUnitTest     # 69 tests
+./gradlew :app:testDebugUnitTest     # 80 tests
 ./gradlew :app:assembleDebug
 ```
 

@@ -30,10 +30,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -51,21 +48,32 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mj.wordshake.game.BoardSize
 import com.mj.wordshake.game.FoundWord
+import com.mj.wordshake.game.Settings
 import com.mj.wordshake.game.Scoring
 import com.mj.wordshake.game.Solver
 import com.mj.wordshake.game.Verdict
 
 @Composable
 fun GameScreen(state: UiState, actions: GameActions) {
-    WordShakeTheme {
-        Surface(color = Palette.Background, modifier = Modifier.fillMaxSize().systemBarsPadding()) {
-            KeepScreenOn(state.phase == Phase.PLAYING)
-            when (state.phase) {
-                Phase.LOADING -> LoadingPane()
-                Phase.RESULTS -> ResultsPane(state, actions)
-                else -> RoundPane(state, actions)
+    WordShakeTheme(state.settings.theme) {
+        // The surface itself runs full bleed so the chosen background reaches
+        // behind the system bars; only the content is inset.
+        Surface(color = Palette.Background, modifier = Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().systemBarsPadding()) {
+                KeepScreenOn(state.phase == Phase.PLAYING)
+                when (state.phase) {
+                    Phase.LOADING -> LoadingPane()
+                    Phase.RESULTS -> ResultsPane(state, actions)
+                    else -> RoundPane(state, actions)
+                }
+                if (state.settingsOpen) {
+                    SettingsScreen(
+                        settings = state.settings,
+                        onChange = actions::updateSettings,
+                        onClose = actions::closeSettings,
+                    )
+                }
             }
         }
     }
@@ -80,8 +88,9 @@ interface GameActions {
     fun shake()
     fun submit()
     fun clearPath()
-    fun setBoardSize(size: BoardSize)
-    fun setRoundSeconds(seconds: Int)
+    fun openSettings()
+    fun closeSettings()
+    fun updateSettings(settings: Settings)
     fun onTraceStart(cell: Int)
     fun onTraceMove(cell: Int)
     fun onTraceEnd()
@@ -120,6 +129,7 @@ private fun RoundPane(state: UiState, actions: GameActions) {
                     board = board,
                     path = state.path,
                     enabled = state.phase == Phase.PLAYING,
+                    swipeRadius = state.settings.swipeRadius,
                     onTraceStart = actions::onTraceStart,
                     onTraceMove = actions::onTraceMove,
                     onTraceEnd = actions::onTraceEnd,
@@ -176,7 +186,7 @@ private fun CoverPane(state: UiState, actions: GameActions) {
                 Phase.PAUSED -> {
                     Text("Paused", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Palette.TextPrimary)
                     Spacer(Modifier.height(16.dp))
-                    Button(onClick = actions::resume, colors = primaryButton()) { Text("Resume") }
+                    Button(onClick = actions::resume, colors = primaryButtonColors()) { Text("Resume") }
                     Spacer(Modifier.height(8.dp))
                     TextButton(onClick = actions::finish) {
                         Text("End round", color = Palette.TextMuted)
@@ -198,27 +208,28 @@ private fun CoverPane(state: UiState, actions: GameActions) {
                         fontSize = 13.sp,
                         textAlign = TextAlign.Center,
                     )
-                    Spacer(Modifier.height(18.dp))
-
-                    ChipRow(
-                        options = BoardSize.entries.map { it to it.label },
-                        selected = state.boardSize,
-                        onSelect = actions::setBoardSize,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    ChipRow(
-                        options = listOf(120 to "2 min", 180 to "3 min", 300 to "5 min"),
-                        selected = state.roundSeconds,
-                        onSelect = actions::setRoundSeconds,
+                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        "${state.settings.boardSize.label}  ·  " +
+                            "${state.settings.roundSeconds / 60} min  ·  " +
+                            "${state.minWordLength}+ letters",
+                        color = Palette.Accent,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
                     )
 
                     Spacer(Modifier.height(18.dp))
-                    Button(onClick = actions::start, colors = primaryButton()) {
+                    Button(onClick = actions::start, colors = primaryButtonColors()) {
                         Text("Start round", fontWeight = FontWeight.Bold)
                     }
-                    Spacer(Modifier.height(6.dp))
-                    TextButton(onClick = actions::shake) {
-                        Text("Shake again", color = Palette.TextMuted)
+                    Spacer(Modifier.height(2.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(onClick = actions::shake) {
+                            Text("Shake again", color = Palette.TextMuted)
+                        }
+                        TextButton(onClick = actions::openSettings) {
+                            Text("Settings", color = Palette.TextMuted)
+                        }
                     }
                     if (state.best > 0) {
                         Text(
@@ -229,29 +240,6 @@ private fun CoverPane(state: UiState, actions: GameActions) {
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun <T> ChipRow(
-    options: List<Pair<T, String>>,
-    selected: T,
-    onSelect: (T) -> Unit,
-) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        for ((value, label) in options) {
-            FilterChip(
-                selected = value == selected,
-                onClick = { onSelect(value) },
-                label = { Text(label) },
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = Palette.Surface,
-                    labelColor = Palette.TextMuted,
-                    selectedContainerColor = Palette.PickedFace,
-                    selectedLabelColor = Palette.PickedText,
-                ),
-            )
         }
     }
 }
@@ -275,7 +263,17 @@ private fun ScoreBar(state: UiState) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Stat("SCORE", state.score.toString())
-        Stat("WORDS", state.found.size.toString())
+        Stat(
+            label = "WORDS",
+            value = if (state.settings.showWordsRemaining) {
+                // An ellipsis rather than a wrong total while the board is
+                // still being graded in the background.
+                val total = if (state.solving) "..." else state.solution.size.toString()
+                "${state.found.size}/$total"
+            } else {
+                state.found.size.toString()
+            },
+        )
         Text(
             text = "%d:%02d".format(state.secondsLeft / 60, state.secondsLeft % 60),
             style = ClockStyle,
@@ -342,7 +340,7 @@ private fun ControlRow(state: UiState, actions: GameActions) {
         Button(
             onClick = actions::submit,
             enabled = playing && state.canSubmit,
-            colors = primaryButton(),
+            colors = primaryButtonColors(),
             modifier = Modifier.weight(1f),
         ) { Text("Submit") }
 
@@ -457,7 +455,7 @@ private fun ResultsPane(state: UiState, actions: GameActions) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(
                     onClick = actions::shake,
-                    colors = primaryButton(),
+                    colors = primaryButtonColors(),
                     modifier = Modifier.weight(1f),
                 ) { Text("New board", fontWeight = FontWeight.Bold) }
             }
@@ -519,15 +517,6 @@ private fun SectionHeader(title: String, count: Int) {
         HorizontalDivider(Modifier.padding(top = 6.dp, bottom = 8.dp), color = Palette.SurfaceHigh)
     }
 }
-
-@Composable
-private fun primaryButton() = ButtonDefaults.buttonColors(
-    containerColor = Palette.PickedFace,
-    contentColor = Palette.PickedText,
-    disabledContainerColor = Palette.SurfaceHigh,
-    disabledContentColor = Palette.TextMuted,
-)
-
 @Composable
 private fun KeepScreenOn(active: Boolean) {
     val view = LocalView.current

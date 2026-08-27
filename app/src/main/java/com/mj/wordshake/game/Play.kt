@@ -59,10 +59,11 @@ fun judge(
     dictionary: WordDictionary?,
     alreadyFound: Set<String>,
     path: List<Int>,
+    minLength: Int = board.size.minWordLength,
 ): Verdict {
     val word = board.wordFor(path)
     return when {
-        word.length < board.size.minWordLength -> Verdict.TOO_SHORT
+        word.length < minLength -> Verdict.TOO_SHORT
         word in alreadyFound -> Verdict.REPEAT
         !board.isLegalPath(path) -> Verdict.UNKNOWN
         dictionary == null -> Verdict.UNKNOWN
