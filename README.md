@@ -96,7 +96,8 @@ a lower reach is steadier and a higher one is more responsive.
 
 ## Updating
 
-Settings has a **Version** row with a Check button. It reads the GitHub
+Settings is reached from the gear in the score bar, on every screen. It has a
+**Version** row with a Check button. It reads the GitHub
 releases API, and if the newest tag is later than the installed `versionName`
 it offers the release notes and an Install button, which downloads the `.apk`
 asset to the cache and hands it to the system installer.

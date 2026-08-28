@@ -92,7 +92,16 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- settings ---------------------------------------------------------
 
-    fun openSettings() = _state.update { it.copy(settingsOpen = true) }
+    /**
+     * Opening settings mid-round stops the clock first. Several of the
+     * settings re-shake or re-grade the board, which would be unfair to a round
+     * already in progress, and the player cannot read the board through the
+     * sheet anyway.
+     */
+    fun openSettings() {
+        if (_state.value.phase == Phase.PLAYING) pause()
+        _state.update { it.copy(settingsOpen = true) }
+    }
 
     fun closeSettings() = _state.update { it.copy(settingsOpen = false) }
 

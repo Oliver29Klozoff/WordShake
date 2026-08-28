@@ -29,9 +29,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -148,7 +152,7 @@ private fun RoundPane(state: UiState, actions: GameActions) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 boardPane(Modifier.fillMaxHeight().aspectRatio(1f))
                 Column(Modifier.weight(1f).fillMaxHeight()) {
-                    ScoreBar(state)
+                    ScoreBar(state, actions)
                     WordBanner(state)
                     ControlRow(state, actions)
                     Spacer(Modifier.height(8.dp))
@@ -157,7 +161,7 @@ private fun RoundPane(state: UiState, actions: GameActions) {
             }
         } else {
             Column(Modifier.fillMaxSize()) {
-                ScoreBar(state)
+                ScoreBar(state, actions)
                 Spacer(Modifier.height(6.dp))
                 boardPane(Modifier.fillMaxWidth().weight(1f))
                 WordBanner(state)
@@ -199,6 +203,12 @@ private fun CoverPane(state: UiState, actions: GameActions) {
                         fontSize = 30.sp,
                         fontWeight = FontWeight.Bold,
                         color = Palette.TextPrimary,
+                    )
+                    Text(
+                        "v${appVersion()}",
+                        color = Palette.TextMuted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
@@ -245,7 +255,7 @@ private fun CoverPane(state: UiState, actions: GameActions) {
 }
 
 @Composable
-private fun ScoreBar(state: UiState) {
+private fun ScoreBar(state: UiState, actions: GameActions) {
     val urgent = state.secondsLeft <= 30 && state.phase == Phase.PLAYING
     val clockColour = if (urgent) Palette.Invalid else Palette.TextPrimary
     val blink by animateFloatAsState(
@@ -258,7 +268,7 @@ private fun ScoreBar(state: UiState) {
         Modifier
             .fillMaxWidth()
             .background(Palette.Surface, RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(start = 14.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -280,6 +290,13 @@ private fun ScoreBar(state: UiState) {
             color = clockColour,
             modifier = Modifier.alpha(blink),
         )
+        IconButton(onClick = actions::openSettings) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Settings",
+                tint = Palette.TextMuted,
+            )
+        }
     }
 }
 
@@ -458,6 +475,7 @@ private fun ResultsPane(state: UiState, actions: GameActions) {
                     colors = primaryButtonColors(),
                     modifier = Modifier.weight(1f),
                 ) { Text("New board", fontWeight = FontWeight.Bold) }
+                OutlinedButton(onClick = actions::openSettings) { Text("Settings") }
             }
         }
 
