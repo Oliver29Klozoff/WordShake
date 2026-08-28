@@ -152,6 +152,10 @@ fun SettingsScreen(
                 )
             }
 
+            item { Section("Version") }
+
+            item { UpdatePane() }
+
             item {
                 Button(
                     onClick = onClose,

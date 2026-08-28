@@ -93,6 +93,22 @@ The trade is tolerance for a wobbly finger: a drag may stray about
 `0.5 - reach` of a cell off the line before the die it passes gets claimed, so
 a lower reach is steadier and a higher one is more responsive.
 
+
+## Updating
+
+Settings has a **Version** row with a Check button. It reads the GitHub
+releases API, and if the newest tag is later than the installed `versionName`
+it offers the release notes and an Install button, which downloads the `.apk`
+asset to the cache and hands it to the system installer.
+
+There is no `version.json` to keep in step, unlike MKTV: the tag *is* the
+version and the first `.apk` asset *is* the download, so a release cannot be
+published in a state where the app knows about a version it cannot fetch. The
+flip side is that the asset must be a real `.apk` — see the naming note above.
+
+Android requires per-app permission to install packages, so the first attempt
+may bounce to the "allow from this source" screen. GitHub's unauthenticated API
+allows 60 checks an hour per IP, which a manual button will not trouble.
 ## Layout
 
 ```
@@ -115,7 +131,7 @@ panel sits beside it or beneath it — it works in portrait and landscape.
 ## Build
 
 ```sh
-./gradlew :app:testDebugUnitTest     # 87 tests
+./gradlew :app:testDebugUnitTest     # 102 tests
 ./gradlew :app:assembleDebug
 ```
 
