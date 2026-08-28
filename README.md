@@ -131,7 +131,7 @@ ui/
   GameViewModel.kt    phases, clock, submissions
   BoardView.kt        the tray, the dice, drag tracing
   GameScreen.kt       screens and layout
-  Theme.kt            palette
+  Theme.kt            the two skins, slate and teal
 MainActivity.kt
 ```
 
