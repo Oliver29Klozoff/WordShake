@@ -15,7 +15,7 @@ data class Settings(
     val showWordsRemaining: Boolean = false,
     val swipeRadius: Float = Grid.DEFAULT_HIT_RADIUS,
     val haptics: Boolean = true,
-    val sound: Boolean = false,
+    val sound: Boolean = true,
     val theme: ThemeChoice = ThemeChoice.SYSTEM,
 ) {
     /** The shortest word that scores on the current board. */

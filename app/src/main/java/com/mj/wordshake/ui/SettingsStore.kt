@@ -3,6 +3,7 @@ package com.mj.wordshake.ui
 import android.content.Context
 import android.content.SharedPreferences
 import com.mj.wordshake.game.BoardSize
+import com.mj.wordshake.game.Scoring
 import com.mj.wordshake.game.Settings
 import com.mj.wordshake.game.ThemeChoice
 
@@ -47,7 +48,10 @@ class SettingsStore(context: Context) {
 
     /**
      * Best scores are kept per board size, round length and minimum length,
-     * since all three change how many points are on the table.
+     * since all three change how many points are on the table — and per
+     * [Scoring.VERSION], so that changing the points table retires the old
+     * bests rather than leaving them to be beaten by scores the new table
+     * inflated. Nothing is deleted; the old keys are simply no longer read.
      */
     fun bestScore(settings: Settings): Int = prefs.getInt(bestKey(settings), 0)
 
@@ -57,8 +61,11 @@ class SettingsStore(context: Context) {
         return prefs.getInt(key, 0)
     }
 
-    private fun bestKey(settings: Settings) =
-        "best_${settings.boardSize.name}_${settings.roundSeconds}_${settings.effectiveMinLength}"
+    private fun bestKey(settings: Settings) = "best" +
+        "_s${Scoring.VERSION}" +
+        "_${settings.boardSize.name}" +
+        "_${settings.roundSeconds}" +
+        "_${settings.effectiveMinLength}"
 
     private inline fun <reified T : Enum<T>> enumOrNull(name: String?): T? =
         name?.let { runCatching { enumValueOf<T>(it) }.getOrNull() }

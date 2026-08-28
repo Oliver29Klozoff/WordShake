@@ -286,7 +286,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val points = if (verdict == Verdict.ACCEPTED) Scoring.score(word) else 0
         val flash = Flash(flashSeq++, word, verdict, points)
 
-        feedback.play(verdict, s.settings.haptics, s.settings.sound)
+        feedback.play(verdict, points, s.settings.haptics, s.settings.sound)
 
         _state.update {
             it.copy(

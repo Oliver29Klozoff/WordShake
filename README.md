@@ -16,11 +16,20 @@ before it goes anywhere public. (Same situation as Tilerummy.)
 - **Words** — trace through dice that touch, including diagonally. No die twice
   in one word. The `Qu` die is one die but counts as two letters.
 - **Minimum length** — 3 letters on 4x4, 4 on 5x5, matching the printed rules.
-- **Scoring** — the standard table, by letter count:
+- **Scoring** — a house rule on the printed Boggle table: three letters score
+  1, and everything from four letters up scores **double** the printed value.
 
-  | Letters | 3 | 4 | 5 | 6 | 7 | 8+ |
-  |---------|---|---|---|---|---|----|
-  | Points  | 1 | 1 | 2 | 3 | 5 | 11 |
+  | Letters  | 3 | 4 | 5 | 6 | 7  | 8+ |
+  |----------|---|---|---|---|----|----|
+  | Printed  | 1 | 1 | 2 | 3 | 5  | 11 |
+  | WordShake| 1 | 2 | 4 | 6 | 10 | 22 |
+
+- **Boards are gated for playability.** Plain tumbling — what the physical game
+  does — leaves 55% of 4x4 boards with a die that has no vowel on it or beside
+  it, 36% with two or more, and occasionally a board with no vowels at all
+  worth a single word. The tray is re-tumbled until every die has a vowel
+  within reach and the vowel count is sane. Only the arrangement is rejected,
+  never a die face, so the letter frequencies stay those of the real dice.
 
 - **Round** — 2, 3, or 5 minutes. The board stays covered until the clock
   starts, so nobody gets a free scan of it.
@@ -132,7 +141,7 @@ panel sits beside it or beneath it — it works in portrait and landscape.
 ## Build
 
 ```sh
-./gradlew :app:testDebugUnitTest     # 102 tests
+./gradlew :app:testDebugUnitTest     # 124 tests
 ./gradlew :app:assembleDebug
 ```
 

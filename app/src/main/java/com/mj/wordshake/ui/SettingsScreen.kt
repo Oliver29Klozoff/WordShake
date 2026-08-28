@@ -131,7 +131,7 @@ fun SettingsScreen(
             item {
                 Toggle(
                     label = "Sound",
-                    note = "Short tones on the same events.",
+                    note = "A chime when a word is found, longer for a better one.",
                     checked = settings.sound,
                     onChange = { onChange(settings.copy(sound = it)) },
                 )

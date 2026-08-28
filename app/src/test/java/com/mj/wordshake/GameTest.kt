@@ -197,19 +197,37 @@ class GameTest {
 
     // --- scoring ----------------------------------------------------------
 
-    @Test fun `scoring follows the standard table`() {
+    @Test fun `three letter words score one`() {
         assertEquals(0, Scoring.score("AT"))
         assertEquals(1, Scoring.score("CAT"))
-        assertEquals(1, Scoring.score("CATS"))
-        assertEquals(2, Scoring.score("CRATE"))
-        assertEquals(3, Scoring.score("CRATES"))
-        assertEquals(5, Scoring.score("CREATES"))
-        assertEquals(11, Scoring.score("CREATING"))
-        assertEquals(11, Scoring.score("CREATIVELY"))
+    }
+
+    @Test fun `four letters and up score double the printed table`() {
+        assertEquals(2, Scoring.score("CATS"))       // printed 1
+        assertEquals(4, Scoring.score("CRATE"))      // printed 2
+        assertEquals(6, Scoring.score("CRATES"))     // printed 3
+        assertEquals(10, Scoring.score("CREATES"))   // printed 5
+        assertEquals(22, Scoring.score("CREATING"))  // printed 11
+        assertEquals(22, Scoring.score("CREATIVELY"))
+    }
+
+    @Test fun `the bonus starts at four letters, not three`() {
+        assertEquals(1, Scoring.score("CAT"))
+        assertTrue(Scoring.score("CATS") == Scoring.score("CAT") * 2)
+    }
+
+    @Test fun `scoring never falls as a word gets longer`() {
+        val ladder = listOf("AT", "CAT", "CATS", "CRATE", "CRATES", "CREATES", "CREATING")
+        for (i in 0 until ladder.size - 1) {
+            assertTrue(
+                "${ladder[i + 1]} scores less than ${ladder[i]}",
+                Scoring.score(ladder[i + 1]) >= Scoring.score(ladder[i]),
+            )
+        }
     }
 
     @Test fun `scoring counts Qu as two letters`() {
-        assertEquals(1, Scoring.score("QUIT"))
-        assertEquals(2, Scoring.score("QUITS"))
+        assertEquals(2, Scoring.score("QUIT"))
+        assertEquals(4, Scoring.score("QUITS"))
     }
 }

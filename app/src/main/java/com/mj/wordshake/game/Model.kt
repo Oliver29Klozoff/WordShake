@@ -2,6 +2,9 @@ package com.mj.wordshake.game
 
 import kotlin.random.Random
 
+/** "Qu" is not here: it needs a vowel after it, so it builds like a consonant. */
+private const val VOWELS = "AEIOU"
+
 /**
  * Board geometry. Boggle-style boards are square; the two sizes here mirror the
  * classic 4x4 game and the 5x5 "big" variant, which raises the minimum word
@@ -52,6 +55,25 @@ class Board(val size: BoardSize, val faces: List<String>) {
         for (i in path) append(faces[i])
     }.uppercase()
 
+    /**
+     * Faces that are a plain vowel. "Qu" is deliberately not one: it still
+     * needs a vowel after it to spell anything, so it behaves like a consonant
+     * when you are looking for something to build on.
+     */
+    val vowelCount: Int get() = faces.count { it.length == 1 && it[0] in VOWELS }
+
+    /**
+     * Cells with no vowel on them and none on any neighbour. A die like that
+     * is dead weight — nothing can be spelled through it — and a cluster of
+     * them is a corner of the board the player simply cannot use.
+     */
+    val dryCellCount: Int
+        get() = (0 until size.cellCount).count { cell ->
+            !isVowel(cell) && neighbours[cell].none { isVowel(it) }
+        }
+
+    private fun isVowel(cell: Int) = faces[cell].length == 1 && faces[cell][0] in VOWELS
+
     /** A path is legal when every step moves to a fresh, adjacent cell. */
     fun isLegalPath(path: List<Int>): Boolean {
         if (path.isEmpty()) return false
@@ -101,23 +123,99 @@ object Dice {
         BoardSize.BIG -> BIG
     }
 
-    /** Roll every die, then tumble them into the tray. */
+    /**
+     * Rolls the dice and tumbles them into the tray, re-tumbling while the
+     * result is unplayable.
+     *
+     * The real game has the same flaw and simply lives with it: over half of
+     * plain shakes leave at least one die with no vowel on it or beside it, a
+     * third leave two or more, and a board can come up with no vowels at all
+     * and a single findable word. On a table you shrug and reshake; on a phone
+     * it just looks broken. So the tray is tumbled again rather than dealt.
+     *
+     * Only the arrangement is rejected, never a die face, so the letter
+     * frequencies stay those of the real dice.
+     */
     fun shake(size: BoardSize, rng: Random = Random.Default): Board {
+        var fallback: Board? = null
+        var fewestDry = Int.MAX_VALUE
+
+        repeat(MAX_TUMBLES) {
+            val board = tumble(size, rng)
+            if (isPlayable(board)) return board
+            // Keep the least bad, so a run of poor luck can never leave the
+            // player worse off than a single plain shake would have.
+            if (board.dryCellCount < fewestDry) {
+                fewestDry = board.dryCellCount
+                fallback = board
+            }
+        }
+        return fallback ?: tumble(size, rng)
+    }
+
+    /** One roll of every die, tumbled into position. */
+    private fun tumble(size: BoardSize, rng: Random): Board {
         val rolled = forSize(size).mapTo(ArrayList()) { it[rng.nextInt(it.size)] }
         rolled.shuffle(rng)
         return Board(size, rolled)
     }
+
+    /**
+     * Every die must have a vowel within reach, and the board must hold enough
+     * vowels to build on without drowning in them.
+     */
+    fun isPlayable(board: Board): Boolean {
+        if (board.dryCellCount > 0) return false
+        val vowels = board.vowelCount
+        return vowels >= minVowels(board.size) && vowels <= maxVowels(board.size)
+    }
+
+    private fun minVowels(size: BoardSize) = when (size) {
+        BoardSize.CLASSIC -> 4
+        BoardSize.BIG -> 6
+    }
+
+    private fun maxVowels(size: BoardSize) = size.cellCount / 2 + 1
+
+    /**
+     * Enough attempts that failing all of them is vanishingly unlikely, few
+     * enough that a shake stays instant — one tumble costs a few microseconds.
+     */
+    private const val MAX_TUMBLES = 40
 }
 
-/** Standard Boggle scoring, by letter count rather than die count. */
+/**
+ * Scoring, by letter count rather than die count.
+ *
+ * House rule: a three-letter word is worth its printed 1, and everything from
+ * four letters up scores double the printed value. Short words stay worth
+ * finding, but the reward for pushing a word out grows twice as fast.
+ */
 object Scoring {
-    fun score(word: String): Int = when (word.length) {
+
+    /**
+     * Bumped whenever the table below changes. Best scores are filed under it,
+     * so a score set on one table is never shown as beaten by a score set on a
+     * different one — the two are not comparable.
+     */
+    const val VERSION = 3
+
+    /** The length from which the doubling applies. */
+    const val BONUS_FROM = 4
+
+    /** The printed Boggle table, before the house rule. */
+    private fun base(length: Int): Int = when (length) {
         0, 1, 2 -> 0
         3, 4 -> 1
         5 -> 2
         6 -> 3
         7 -> 5
         else -> 11
+    }
+
+    fun score(word: String): Int {
+        val printed = base(word.length)
+        return if (word.length >= BONUS_FROM) printed * 2 else printed
     }
 }
 

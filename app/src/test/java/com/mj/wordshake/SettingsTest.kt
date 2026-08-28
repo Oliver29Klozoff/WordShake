@@ -108,7 +108,7 @@ class SettingsTest {
         assertNull(s.minWordLength)
         assertFalse(s.showWordsRemaining)
         assertTrue(s.haptics)
-        assertFalse(s.sound)
+        assertTrue("the chime should be on out of the box", s.sound)
     }
 
     @Test fun `every offered round length is a whole number of minutes`() {
